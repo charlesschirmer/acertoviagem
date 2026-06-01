@@ -1120,8 +1120,7 @@ function gerarPDFWhatsApp(){
     doc.save(nomeArq);
     toast('PDF baixado! Abra o WhatsApp e anexe o arquivo. 📎');
     const waPhone=(pessoa?.fone||'').replace(/\D/g,'');
-    const waMsg='Segue relatório de Acerto de Viagem.
-(anexar)';
+    const waMsg='Segue relatório de Acerto de Viagem.\n(anexar)';
     const waUrl=waPhone
       ?'https://wa.me/55'+waPhone+'?text='+encodeURIComponent(waMsg)
       :'https://wa.me/?text='+encodeURIComponent(waMsg);
