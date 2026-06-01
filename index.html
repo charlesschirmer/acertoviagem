@@ -915,8 +915,8 @@ function buildAcertoResult(r){
       </button>
       <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Imprimir</button>
       <button class="btn btn-ghost btn-sm" onclick="exportarAcertoCSV()">⬇️ CSV</button>
-      <span style="font-size:11px;color:var(--text3);max-width:260px;line-height:1.4">
-        O PDF será baixado automaticamente. Em seguida o WhatsApp abrirá com o resumo — basta anexar o arquivo.
+      <span style="font-size:11px;color:var(--text3);line-height:1.4">
+        📎 O PDF será baixado — anexe no WhatsApp ao enviar.
       </span>
     </div>
   </div>`;
@@ -1120,16 +1120,11 @@ function gerarPDFWhatsApp(){
     doc.save(nomeArq);
     toast('PDF baixado! Abra o WhatsApp e anexe o arquivo. 📎');
     const waPhone=(pessoa?.fone||'').replace(/\D/g,'');
-    const waMeta='\u2708\uFE0F *Acerto de Viagem*\n\ud83d\udc64 *'+(pessoa?.nome||'')+'*  |  \ud83d\udcc5 '+periodoStr+'\n\n';
-    const waDespesas=lista.map((d,i)=>{
-      const g=grupos.find(x=>x.id===d.grupoId);
-      return (i+1)+'. '+fmtDate(d.data)+' - '+d.forn+' | '+(g?.nome||'--')+' | '+(d.pagto==='dinheiro'?'Dinheiro':'Cartao')+' | '+fmt(d.valor);
-    }).join('\n');
-    const waGrupos='\n\n\ud83d\udcc1 *Por Grupo:*\n'+resumoGrupos.map(g=>'- '+g.nome+' ('+g.cr+'): '+fmt(g.total)).join('\n');
-    const waSaldo='\n\n'+(saldo>0?'\ud83d\udd34':'\ud83d\udfe2')+' *Saldo: '+(saldo>0?'+':'')+fmt(Math.abs(saldo))+'* - '+sLabel+'\n_(PDF em anexo)_';
+    const waMsg='Segue relatório de Acerto de Viagem.
+(anexar)';
     const waUrl=waPhone
-      ?'https://wa.me/55'+waPhone+'?text='+encodeURIComponent(waMeta+waDespesas+waGrupos+waSaldo)
-      :'https://wa.me/?text='+encodeURIComponent(waMeta+waDespesas+waGrupos+waSaldo);
+      ?'https://wa.me/55'+waPhone+'?text='+encodeURIComponent(waMsg)
+      :'https://wa.me/?text='+encodeURIComponent(waMsg);
     setTimeout(()=>window.open(waUrl,'_blank'),800);
   } catch(err) {
     restore();
