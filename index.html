@@ -939,15 +939,11 @@ function buildAcertoResult(r){
 
     <!-- ══ AÇÕES (ocultas na impressão) ══ -->
     <div class="no-print" style="margin-top:4px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-      <button id="btnPdfWa" class="btn btn-accent" onclick="gerarPDFWhatsApp()" style="display:flex;align-items:center;gap:8px;font-size:14px;padding:10px 20px">
-        <span>📎</span>
-        <span>Gerar PDF e Enviar WhatsApp</span>
+      <button class="btn btn-accent" onclick="gerarPDF()" style="display:flex;align-items:center;gap:8px;font-size:14px;padding:10px 20px">
+        📄 Gerar PDF
       </button>
-      <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Imprimir</button>
-      <button class="btn btn-ghost btn-sm" onclick="exportarAcertoCSV()">⬇️ CSV</button>
-      <span style="font-size:11px;color:var(--text3);line-height:1.4">
-        📎 O PDF será baixado — anexe no WhatsApp ao enviar.
-      </span>
+      <button class="btn btn-outline" onclick="window.print()">🖨️ Imprimir</button>
+      <button class="btn btn-ghost" onclick="exportarAcertoCSV()">⬇️ CSV</button>
     </div>
   </div>`;
 }
@@ -1056,10 +1052,10 @@ function renderRelatorio(){
 // ════════════════════════════════════════════════════════════
 // GERAR PDF + WHATSAPP
 // ════════════════════════════════════════════════════════════
-function gerarPDFWhatsApp(){
+function gerarPDF(){
   const btn = document.getElementById('btnPdfWa');
   function setBusy(){ if(btn){btn.disabled=true;btn.textContent='⏳ Gerando PDF...';} }
-  function restore(){ if(btn){btn.disabled=false;btn.innerHTML='<span>📎</span><span>Gerar PDF e Enviar WhatsApp</span>';} }
+  function restore(){ if(btn){btn.disabled=false;btn.innerHTML='📄 Gerar PDF';} }
   setBusy();
   const lib = globalThis.jspdf;
   if(!lib || !lib.jsPDF){ toast('Biblioteca PDF não carregou. Reabra o arquivo.','error'); restore(); return; }
@@ -1175,17 +1171,11 @@ function gerarPDFWhatsApp(){
     doc.setFont('helvetica','bold'); doc.setFontSize(14);
     if(saldo>0) setTC(192,57,43); else if(saldo<0) setTC(26,107,90); else setTC(80,80,80);
     doc.text((saldo>0?'+':'')+fmt(Math.abs(saldo)),PW-MR-2,y+14,{align:'right'});
-    // save + whatsapp
+    // salvar PDF
     const nomeArq='acerto_'+(pessoa?.nome||'viagem').replace(/\s+/g,'_')+'_'+(ac.dtAte||today())+'.pdf';
     restore();
     doc.save(nomeArq);
-    toast('PDF baixado! Abra o WhatsApp e anexe o arquivo. 📎');
-    const waPhone=(pessoa?.fone||'').replace(/\D/g,'');
-    const waMsg='Segue relatório de Acerto de Viagem.\n(anexar)';
-    const waUrl=waPhone
-      ?'https://wa.me/55'+waPhone+'?text='+encodeURIComponent(waMsg)
-      :'https://wa.me/?text='+encodeURIComponent(waMsg);
-    setTimeout(()=>window.open(waUrl,'_blank'),800);
+    toast('PDF gerado com sucesso! 📄');
   } catch(err) {
     restore();
     toast('Erro: '+err.message,'error');
