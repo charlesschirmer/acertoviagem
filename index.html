@@ -826,21 +826,52 @@ function buildAcertoResult(r){
   return `
   <style>
     @media print {
+      @page { margin: 10mm 12mm; size: A4 portrait; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       header, nav#sidebar, .no-print { display:none !important; }
+      #appFooter { display:none !important; }
       main { margin-left:0 !important; padding:0 !important; }
+      body { background:#fff !important; margin:0; }
       .acerto-panel { box-shadow:none !important; border:none !important; padding:0 !important; }
-      body { background:#fff !important; }
-      .print-page { padding: 18px 24px; }
-      thead { background: #e8f5f1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      tfoot { background: #f9fafb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .rp-saldo-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .print-page { padding:0 !important; }
+      /* Mostra barra verde com logo na impressão */
+      .print-header-bar { display:flex !important; }
+      /* Oculta cabeçalho de tela na impressão, mostra dados da pessoa abaixo da barra */
+      .print-pessoa { border-top: none !important; padding-top: 8px !important; }
+      /* Cabeçalho verde igual ao PDF */
+      .print-header-bar {
+        background: #1a6b5a !important;
+        color: #fff !important;
+        padding: 8px 16px;
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        page-break-inside: avoid;
+      }
+      .print-header-bar img { height: 36px; width: auto; }
+      .print-header-bar .emit-date { font-size:10px; color:rgba(255,255,255,.9); }
+      /* Tabelas */
+      table { font-size: 11px !important; width:100%; border-collapse:collapse; }
+      thead th { background:#1a6b5a !important; color:#fff !important; padding:6px 8px !important; font-size:10px !important; }
+      tbody td { padding:5px 8px !important; font-size:11px !important; border-bottom:1px solid #dde3e0; }
+      tfoot td { background:#e8f5f1 !important; padding:6px 8px !important; font-weight:700; }
+      .rp-saldo-box { background:#e8f5f1 !important; border:1.5px solid #1a6b5a !important; }
+      /* Evitar quebra de página dentro das seções */
+      .print-section { page-break-inside: avoid; }
     }
   </style>
 
   <div class="acerto-panel print-page">
 
-    <!-- ══ CABEÇALHO COMPACTO ══ -->
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;padding-bottom:10px;border-bottom:2px solid var(--primary);margin-bottom:16px;">
+    <!-- ══ CABEÇALHO VERDE COM LOGO (só aparece na impressão) ══ -->
+    <div class="print-header-bar" style="display:none">
+      <img src="${LOGO_B64}" alt="NATUSOMOS" style="height:36px;width:auto;object-fit:contain;filter:brightness(0) invert(1)">
+      <span class="emit-date">Emitido em ${fmtDate(today())}</span>
+    </div>
+
+    <!-- ══ CABEÇALHO COMPACTO (tela) ══ -->
+    <div class="print-pessoa" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;padding-bottom:10px;border-bottom:2px solid var(--primary);margin-bottom:16px;">
       <div>
         <div style="font-size:16px;font-weight:700;color:var(--primary-dark)">${sanitize(pessoa?.nome||'—')}</div>
         <div style="font-size:12px;color:var(--text2);margin-top:2px;display:flex;flex-wrap:wrap;gap:12px">
@@ -856,7 +887,7 @@ function buildAcertoResult(r){
     </div>
 
     <!-- ══ DESPESAS LANÇADAS ══ -->
-    <div style="margin-bottom:20px">
+    <div class="print-section" style="margin-bottom:20px">
       <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:8px">Despesas Lançadas</div>
       ${listaOrdenada.length===0?`<div class="empty"><p>Nenhuma despesa no período.</p></div>`:`
       <div class="table-wrap"><table style="font-size:12px">
@@ -887,7 +918,7 @@ function buildAcertoResult(r){
     </div>
 
     <!-- ══ RESUMO POR GRUPO ══ -->
-    <div style="margin-bottom:20px">
+    <div class="print-section" style="margin-bottom:20px">
       <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:8px">Resumo por Grupo de Resultado</div>
       <div class="table-wrap"><table style="font-size:12px">
         <thead><tr>
@@ -921,6 +952,7 @@ function buildAcertoResult(r){
     </div>
 
     <!-- ══ SALDO FINAL ══ -->
+    <div class="print-section">
     <div class="rp-saldo-box" style="background:var(--primary-light);border:1.5px solid var(--primary);border-radius:var(--radius);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:20px">
       <div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2)">Resumo Financeiro</div>
@@ -937,6 +969,7 @@ function buildAcertoResult(r){
       </div>
     </div>
 
+    </div><!-- end print-section saldo -->
     <!-- ══ AÇÕES (ocultas na impressão) ══ -->
     <div class="no-print" style="margin-top:4px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
       <button class="btn btn-accent" onclick="gerarPDF()" style="display:flex;align-items:center;gap:8px;font-size:14px;padding:10px 20px">
