@@ -1139,80 +1139,89 @@ function gerarPDF(){
   const panel = document.querySelector('.acerto-panel');
   if(!panel){ toast('Gere o acerto primeiro.','error'); restore(); return; }
 
-  const ac    = DB.getObj('acertoState');
-  const pess  = DB.get('pessoas').find(x=>x.id===ac.pessoaId);
+  const ac   = DB.getObj('acertoState');
+  const pess = DB.get('pessoas').find(x=>x.id===ac.pessoaId);
   const fname = 'acerto_'+(pess?.nome||'viagem').replace(/\s+/g,'_')+'_'+(ac.dtAte||today())+'.pdf';
 
-  // 1. Mostra barra verde com logo
-  const printBar = panel.querySelector('.print-header-bar');
-  const noprints = panel.querySelectorAll('.no-print');
-  if(printBar) printBar.style.cssText = 'display:flex !important;background:#1a6b5a;color:#fff;padding:8px 16px;align-items:center;justify-content:space-between;margin-bottom:10px;';
-  noprints.forEach(el => el.style.display = 'none');
+  // 1. Cria um clone do painel em largura fixa A4 (794px = 210mm @ 96dpi)
+  //    para garantir layout idêntico à impressão, independente do tamanho da tela
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;z-index:-1;';
 
-  // 2. Injeta estilos de impressão no painel (igual ao @media print)
+  const clone = panel.cloneNode(true);
+
+  // Remove botões no-print do clone
+  clone.querySelectorAll('.no-print').forEach(el => el.remove());
+
+  // Mostra barra verde com logo no clone
+  const cloneBar = clone.querySelector('.print-header-bar');
+  if(cloneBar) cloneBar.style.cssText = 'display:flex!important;background:#1a6b5a;color:#fff;padding:10px 18px;align-items:center;justify-content:space-between;margin-bottom:12px;';
+
+  // Remove sombra/borda do painel clonado
+  clone.style.cssText = 'box-shadow:none;border:none;padding:18px 22px;background:#fff;font-family:Segoe UI,system-ui,sans-serif;';
+
+  // Estilos de impressão aplicados diretamente
   const styleTag = document.createElement('style');
-  styleTag.id = 'pdf-print-override';
   styleTag.textContent = `
-    .acerto-panel table { font-size: 13px !important; border-collapse: collapse; }
-    .acerto-panel thead th { background:#1a6b5a !important; color:#fff !important; padding:6px 8px !important; font-size:12px !important; }
-    .acerto-panel tbody td { padding:5px 8px !important; font-size:13px !important; border-bottom:1px solid #dde3e0; }
-    .acerto-panel tfoot td { background:#e8f5f1 !important; padding:6px 8px !important; font-weight:700; font-size:13px !important; }
-    .acerto-panel .rp-saldo-box { background:#e8f5f1 !important; border:1.5px solid #1a6b5a !important; }
-    .acerto-panel [style*="font-size:12px"] { font-size:13px !important; }
-    .acerto-panel [style*="font-size:11px"] { font-size:13px !important; }
-    .acerto-panel .print-section div[style*="font-size:12px"] { font-size:14px !important; }
-    .acerto-panel .print-section div[style*="font-size:11px"] { font-size:13px !important; }
+    .pdf-clone table { font-size:13px!important; width:100%; border-collapse:collapse; }
+    .pdf-clone thead th { background:#1a6b5a!important; color:#fff!important; padding:7px 10px!important; font-size:12px!important; font-weight:700; }
+    .pdf-clone tbody tr { border-bottom:1px solid #dde3e0; }
+    .pdf-clone tbody td { padding:6px 10px!important; font-size:13px!important; }
+    .pdf-clone tfoot td { background:#e8f5f1!important; padding:7px 10px!important; font-size:13px!important; font-weight:700; }
+    .pdf-clone .rp-saldo-box { background:#e8f5f1!important; border:1.5px solid #1a6b5a!important; }
+    .pdf-clone .print-pessoa { border-bottom:2px solid #1a6b5a; padding-bottom:10px; margin-bottom:14px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; }
+    .pdf-clone [style*="font-size:12px"] { font-size:13px!important; }
+    .pdf-clone [style*="font-size:11px"] { font-size:13px!important; }
+    .pdf-clone [style*="font-size:16px"] { font-size:16px!important; font-weight:700; }
+    .pdf-clone .badge { font-size:12px!important; padding:2px 8px; border-radius:20px; }
+    .pdf-clone .badge-dinheiro { background:#e8f5e9; color:#2e7d32; }
+    .pdf-clone .badge-cartao   { background:#e3f2fd; color:#1565c0; }
   `;
-  document.head.appendChild(styleTag);
+  clone.classList.add('pdf-clone');
+  wrapper.appendChild(styleTag);
+  wrapper.appendChild(clone);
+  document.body.appendChild(wrapper);
 
-  // 3. Captura com html2canvas após DOM atualizar
+  // 2. Captura após render
   setTimeout(() => {
-    html2canvas(panel, {
-      scale: 3,
+    html2canvas(wrapper, {
+      scale: 2,
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
-      removeContainer: true
+      width: 794,
+      windowWidth: 794
     }).then(canvas => {
 
-      // 4. Remove overrides e restaura estado visual
-      const st = document.getElementById('pdf-print-override');
-      if(st) st.remove();
-      if(printBar) printBar.style.cssText = 'display:none';
-      noprints.forEach(el => el.style.display = '');
+      document.body.removeChild(wrapper);
 
-      // 5. Monta PDF A4
+      // 3. Monta PDF A4
       const { jsPDF } = window.jspdf;
-      const ML = 8, MR = 8, MT = 8;
+      const ML = 10, MR = 10, MT = 10;
       const pgW = 210, pgH = 297;
       const usableW = pgW - ML - MR;
-      const imgH = canvas.height * usableW / canvas.width;
       const usableH = pgH - MT - MT;
+      const imgH = canvas.height * usableW / canvas.width;
 
       const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
 
       if(imgH <= usableH){
-        doc.addImage(canvas.toDataURL('image/jpeg',0.97), 'JPEG', ML, MT, usableW, imgH);
+        doc.addImage(canvas.toDataURL('image/jpeg', 0.97), 'JPEG', ML, MT, usableW, imgH);
       } else {
         const pxPerMm = canvas.width / usableW;
         const slicePx = Math.floor(usableH * pxPerMm);
-        let offsetPx = 0;
-        let first = true;
-
+        let offsetPx = 0, first = true;
         while(offsetPx < canvas.height){
-          const thisSlicePx = Math.min(slicePx, canvas.height - offsetPx);
-          const thisSliceMm = thisSlicePx / pxPerMm;
-
-          const slice = document.createElement('canvas');
+          const thisPx = Math.min(slicePx, canvas.height - offsetPx);
+          const thisMm = thisPx / pxPerMm;
+          const slice  = document.createElement('canvas');
           slice.width  = canvas.width;
-          slice.height = thisSlicePx;
-          slice.getContext('2d').drawImage(canvas, 0, offsetPx, canvas.width, thisSlicePx, 0, 0, canvas.width, thisSlicePx);
-
+          slice.height = thisPx;
+          slice.getContext('2d').drawImage(canvas, 0, offsetPx, canvas.width, thisPx, 0, 0, canvas.width, thisPx);
           if(!first) doc.addPage();
-          doc.addImage(slice.toDataURL('image/jpeg',0.97), 'JPEG', ML, MT, usableW, thisSliceMm);
-
-          offsetPx += thisSlicePx;
+          doc.addImage(slice.toDataURL('image/jpeg', 0.97), 'JPEG', ML, MT, usableW, thisMm);
+          offsetPx += thisPx;
           first = false;
         }
       }
@@ -1222,15 +1231,12 @@ function gerarPDF(){
       toast('PDF gerado! 📄');
 
     }).catch(err => {
-      const st = document.getElementById('pdf-print-override');
-      if(st) st.remove();
-      if(printBar) printBar.style.cssText = 'display:none';
-      noprints.forEach(el => el.style.display = '');
+      if(document.body.contains(wrapper)) document.body.removeChild(wrapper);
       restore();
       toast('Erro: '+err.message,'error');
       console.error('html2canvas error:', err);
     });
-  }, 150);
+  }, 200);
 }
 
 // ════════════════════════════════════════════════════════════
