@@ -1139,18 +1139,33 @@ function gerarPDF(){
   const panel = document.querySelector('.acerto-panel');
   if(!panel){ toast('Gere o acerto primeiro.','error'); restore(); return; }
 
-  // 1. Mostra barra de impressão (logo verde) e oculta botões
-  const printBar  = panel.querySelector('.print-header-bar');
-  const noprints  = panel.querySelectorAll('.no-print');
-  if(printBar) printBar.style.cssText = 'display:flex !important;background:#1a6b5a;color:#fff;padding:8px 16px;align-items:center;justify-content:space-between;margin-bottom:10px;';
-  noprints.forEach(el => el.style.display = 'none');
-
-  // 2. Calcula nome do arquivo
   const ac    = DB.getObj('acertoState');
   const pess  = DB.get('pessoas').find(x=>x.id===ac.pessoaId);
   const fname = 'acerto_'+(pess?.nome||'viagem').replace(/\s+/g,'_')+'_'+(ac.dtAte||today())+'.pdf';
 
-  // 3. Captura com html2canvas (scale 3 para alta qualidade)
+  // 1. Mostra barra verde com logo
+  const printBar = panel.querySelector('.print-header-bar');
+  const noprints = panel.querySelectorAll('.no-print');
+  if(printBar) printBar.style.cssText = 'display:flex !important;background:#1a6b5a;color:#fff;padding:8px 16px;align-items:center;justify-content:space-between;margin-bottom:10px;';
+  noprints.forEach(el => el.style.display = 'none');
+
+  // 2. Injeta estilos de impressão no painel (igual ao @media print)
+  const styleTag = document.createElement('style');
+  styleTag.id = 'pdf-print-override';
+  styleTag.textContent = `
+    .acerto-panel table { font-size: 13px !important; border-collapse: collapse; }
+    .acerto-panel thead th { background:#1a6b5a !important; color:#fff !important; padding:6px 8px !important; font-size:12px !important; }
+    .acerto-panel tbody td { padding:5px 8px !important; font-size:13px !important; border-bottom:1px solid #dde3e0; }
+    .acerto-panel tfoot td { background:#e8f5f1 !important; padding:6px 8px !important; font-weight:700; font-size:13px !important; }
+    .acerto-panel .rp-saldo-box { background:#e8f5f1 !important; border:1.5px solid #1a6b5a !important; }
+    .acerto-panel [style*="font-size:12px"] { font-size:13px !important; }
+    .acerto-panel [style*="font-size:11px"] { font-size:13px !important; }
+    .acerto-panel .print-section div[style*="font-size:12px"] { font-size:14px !important; }
+    .acerto-panel .print-section div[style*="font-size:11px"] { font-size:13px !important; }
+  `;
+  document.head.appendChild(styleTag);
+
+  // 3. Captura com html2canvas após DOM atualizar
   setTimeout(() => {
     html2canvas(panel, {
       scale: 3,
@@ -1161,25 +1176,25 @@ function gerarPDF(){
       removeContainer: true
     }).then(canvas => {
 
-      // 4. Restaura estado visual
+      // 4. Remove overrides e restaura estado visual
+      const st = document.getElementById('pdf-print-override');
+      if(st) st.remove();
       if(printBar) printBar.style.cssText = 'display:none';
       noprints.forEach(el => el.style.display = '');
 
       // 5. Monta PDF A4
       const { jsPDF } = window.jspdf;
-      const ML = 8, MR = 8, MT = 8; // margens mm
+      const ML = 8, MR = 8, MT = 8;
       const pgW = 210, pgH = 297;
       const usableW = pgW - ML - MR;
-      const imgH = canvas.height * usableW / canvas.width; // altura proporcional em mm
+      const imgH = canvas.height * usableW / canvas.width;
       const usableH = pgH - MT - MT;
 
       const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
 
       if(imgH <= usableH){
-        // Cabe em uma página
         doc.addImage(canvas.toDataURL('image/jpeg',0.97), 'JPEG', ML, MT, usableW, imgH);
       } else {
-        // Divide em páginas
         const pxPerMm = canvas.width / usableW;
         const slicePx = Math.floor(usableH * pxPerMm);
         let offsetPx = 0;
@@ -1207,13 +1222,15 @@ function gerarPDF(){
       toast('PDF gerado! 📄');
 
     }).catch(err => {
+      const st = document.getElementById('pdf-print-override');
+      if(st) st.remove();
       if(printBar) printBar.style.cssText = 'display:none';
       noprints.forEach(el => el.style.display = '');
       restore();
       toast('Erro: '+err.message,'error');
       console.error('html2canvas error:', err);
     });
-  }, 120); // pequeno delay para o DOM renderizar
+  }, 150);
 }
 
 // ════════════════════════════════════════════════════════════
