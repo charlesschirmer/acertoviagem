@@ -724,7 +724,7 @@ function renderAcerto(){
     const totalDinheiro = lista.filter(d=>d.pagto==='dinheiro').reduce((s,d)=>s+parseFloat(d.valor||0),0);
     const totalCartao = lista.filter(d=>d.pagto==='cartao').reduce((s,d)=>s+parseFloat(d.valor||0),0);
     const adiant = parseFloat(ac.adiantamento)||0;
-    const saldo = totalDinheiro - adiant; // positivo = colaborador deve devolver; negativo = empresa deve ao colaborador
+    const saldo = totalDinheiro - adiant; // positivo = empresa deve ao colaborador (gastou mais que adiantou); negativo = colaborador deve devolver (adiantou mais que gastou)
 
     // por grupo
     const porGrupo = {};
@@ -793,8 +793,10 @@ function limparAcerto(){
 function buildAcertoResult(r){
   const {lista,totalGeral,totalDinheiro,totalCartao,adiant,saldo,pessoa} = r;
   const ac = DB.getObj('acertoState');
-  const saldoClass = saldo>0?'val-pos':saldo<0?'val-neg':'val-zero';
-  const saldoLabel = saldo>0?'Colaborador deve devolver à empresa':saldo<0?'Empresa deve reembolsar o colaborador':'Quitado — sem pendências';
+  // saldo>0 = totalDinheiro > adiant → colaborador gastou mais → empresa deve ao colaborador
+  // saldo<0 = totalDinheiro < adiant → colaborador recebeu mais → deve devolver à empresa
+  const saldoClass = saldo>0?'val-neg':saldo<0?'val-pos':'val-zero';
+  const saldoLabel = saldo>0?'Colaborador a Receber da Empresa':saldo<0?'Colaborador deve Devolver à Empresa':'Quitado — sem pendências';
   const grupos = DB.get('grupos');
 
   const grupoMap = {};
@@ -820,7 +822,7 @@ function buildAcertoResult(r){
   }).join('\n');
   const waResumo = '\n\n📁 *Por Grupo:*\n'+resumoGrupos.map(g=>`• ${g.nome} (${g.cr}): ${fmt(g.total)}`).join('\n');
   const waSaldo = `\n\n💰 *Dinheiro:* ${fmt(totalDinheiro)} | *Cartão:* ${fmt(totalCartao)} | *Adiant:* ${fmt(adiant)}\n`
-    +`${saldo>0?'🔴':'🟢'} *Saldo: ${saldo>0?'+':''}${fmt(Math.abs(saldo))}* — ${saldoLabel}`;
+    +`${saldo>0?'🟢':'🔴'} *Saldo: ${saldo>0?'+':''}${fmt(Math.abs(saldo))}* — ${saldoLabel}`;
   const waText = encodeURIComponent(waMeta+waDespesas+waResumo+waSaldo);
   const waPhone = pessoa?.fone ? pessoa.fone.replace(/\D/g,'') : '';
   const waUrl = waPhone ? `https://wa.me/55${waPhone}?text=${waText}` : `https://wa.me/?text=${waText}`;
