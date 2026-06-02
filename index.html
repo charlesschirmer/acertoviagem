@@ -1095,11 +1095,12 @@ function gerarPDFWhatsApp(){
     let y=14;
     // header bar
     setFC(26,107,90); doc.rect(0,0,PW,22,'F');
-    // logo centralizada
-    try { doc.addImage(LOGO_B64,'PNG', PW/2-28, 2, 56, 18); } catch(e){
-      // fallback: texto se logo falhar
+    // logo centralizada (usa dados pré-carregados via canvas)
+    if(LOGO_PNG_DATA){
+      try { doc.addImage(LOGO_PNG_DATA,'PNG', PW/2-30, 2, 60, 18); } catch(e){}
+    } else {
       doc.setFont('helvetica','bold'); doc.setFontSize(13); setTC(255,255,255);
-      doc.text('NATUSOMOS',PW/2,13,{align:'center'});
+      doc.text('NATUSOMOS', PW/2, 14, {align:'center'});
     }
     // data à direita
     doc.setFont('helvetica','normal'); doc.setFontSize(7); setTC(255,255,255);
@@ -1186,6 +1187,22 @@ const APP_DATE    = '2026-06-01';
 // show version in footer
 document.getElementById('vNum').textContent  = APP_VERSION;
 document.getElementById('vDate').textContent = 'Build ' + APP_DATE;
+
+// Pré-carrega logo para uso no PDF
+let LOGO_PNG_DATA = null;
+(function preloadLogo(){
+  const img = new Image();
+  img.onload = function(){
+    try {
+      const c = document.createElement('canvas');
+      c.width  = img.naturalWidth;
+      c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img,0,0);
+      LOGO_PNG_DATA = c.toDataURL('image/png');
+    } catch(e){ LOGO_PNG_DATA = null; }
+  };
+  img.src = LOGO_B64;
+})();
 
 navigate('relatorio');
 </script>
