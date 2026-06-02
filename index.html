@@ -1008,11 +1008,17 @@ function exportarAcertoCSV(){
 // PAGE: RELATÓRIO GERAL
 // ════════════════════════════════════════════════════════════
 function renderRelatorio(){
-  const despesas = DB.get('despesas');
+  const todasDespesas = DB.get('despesas');
   const pessoas  = DB.get('pessoas');
   const grupos   = DB.get('grupos');
 
-  const totalGeral = despesas.reduce((s,d)=>s+parseFloat(d.valor||0),0);
+  // filtro de período
+  const fs = DB.getObj('relatorioFilter');
+  let despesas = [...todasDespesas];
+  if(fs.dtDe)  despesas = despesas.filter(d=>d.data>=fs.dtDe);
+  if(fs.dtAte) despesas = despesas.filter(d=>d.data<=fs.dtAte);
+
+  const totalGeral    = despesas.reduce((s,d)=>s+parseFloat(d.valor||0),0);
   const totalDinheiro = despesas.filter(d=>d.pagto==='dinheiro').reduce((s,d)=>s+parseFloat(d.valor||0),0);
   const totalCartao   = despesas.filter(d=>d.pagto==='cartao').reduce((s,d)=>s+parseFloat(d.valor||0),0);
 
@@ -1028,8 +1034,30 @@ function renderRelatorio(){
     return {nome:g.nome, cr:g.cr, total:ds.reduce((s,d)=>s+parseFloat(d.valor||0),0), qtd:ds.length};
   }).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
 
+  // label do período
+  const periodoLabel = (fs.dtDe||fs.dtAte)
+    ? `${fs.dtDe?fmtDate(fs.dtDe):'início'} até ${fs.dtAte?fmtDate(fs.dtAte):'hoje'}`
+    : 'Todo o período';
+
   const html = `
-  <div class="page-header"><h1>📊 Relatório Geral</h1><p>Visão consolidada de todas as despesas registradas.</p></div>
+  <div class="page-header" style="margin-bottom:10px"><h1>📊 Relatório Geral</h1></div>
+
+  <!-- Filtro de período -->
+  <div class="card" style="padding:10px 14px;margin-bottom:16px">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+      <div style="display:flex;flex-direction:column;gap:3px;min-width:120px">
+        <label style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">De</label>
+        <input type="date" id="rf_dtDe" value="${fs.dtDe||''}" style="height:34px;font-size:13px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text)">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;min-width:120px">
+        <label style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Até</label>
+        <input type="date" id="rf_dtAte" value="${fs.dtAte||''}" style="height:34px;font-size:13px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text)">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="filtrarRelatorio()" style="height:34px;padding:0 16px">🔍 Filtrar</button>
+      <button class="btn btn-ghost btn-sm" onclick="limparFiltroRelatorio()" style="height:34px;padding:0 12px">✕ Limpar</button>
+      ${(fs.dtDe||fs.dtAte)?`<span style="font-size:12px;color:var(--text2);align-self:center">📅 ${periodoLabel}</span>`:''}
+    </div>
+  </div>
 
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-label">Total Despesas</div><div class="stat-value">${fmt(totalGeral)}</div><div class="stat-sub">${despesas.length} lançamentos</div></div>
@@ -1041,7 +1069,7 @@ function renderRelatorio(){
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px">
     <div class="card">
       <div class="card-title">👤 Por Colaborador</div>
-      ${porPessoa.length===0?`<div class="empty"><p>Sem dados.</p></div>`:`
+      ${porPessoa.length===0?`<div class="empty"><p>Sem dados no período.</p></div>`:`
       <div class="table-wrap"><table>
         <thead><tr><th>Nome</th><th>Qtd</th><th style="text-align:right">Total</th></tr></thead>
         <tbody>
@@ -1055,7 +1083,7 @@ function renderRelatorio(){
     </div>
     <div class="card">
       <div class="card-title">📂 Por Grupo de Contas</div>
-      ${porGrupo.length===0?`<div class="empty"><p>Sem dados.</p></div>`:`
+      ${porGrupo.length===0?`<div class="empty"><p>Sem dados no período.</p></div>`:`
       <div class="table-wrap"><table>
         <thead><tr><th>Grupo</th><th>CR</th><th>Qtd</th><th style="text-align:right">Total</th></tr></thead>
         <tbody>
@@ -1081,6 +1109,22 @@ function renderRelatorio(){
 
   document.getElementById('main').innerHTML = html;
 }
+
+function filtrarRelatorio(){
+  const fs = {};
+  const de  = document.getElementById('rf_dtDe');
+  const ate = document.getElementById('rf_dtAte');
+  if(de)  fs.dtDe  = de.value;
+  if(ate) fs.dtAte = ate.value;
+  DB.setObj('relatorioFilter', fs);
+  renderRelatorio();
+}
+
+function limparFiltroRelatorio(){
+  DB.setObj('relatorioFilter', {});
+  renderRelatorio();
+}
+
 
 // ════════════════════════════════════════════════════════════
 // GERAR PDF + WHATSAPP
